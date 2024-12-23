@@ -41,17 +41,20 @@ def get_blip2_model(path: str, lora: bool = False):
 
 def run_eval():
     responses = []
+    # model, name = get_blip2_model("Salesforce/blip2-opt-2.7b", lora=False), "blip2-base"
+    # model, name = get_blip2_model("blip2-sft", lora=False), "blip2-sft"
+    model, name = get_blip2_model("sadmankiba/blip2-sft", lora=True), "blip2-sft"
+    
     for i, entry in enumerate(tqdm(dataset['test'])): 
         prompt = f"Question: {entry['question']} Answer:"
         image = entry['image']
         inputs = processor(images=image, text=prompt, return_tensors="pt").to(device, torch.float16)
-        # model, name, lora = get_blip2_model("Salesforce/blip2-opt-2.7b"), "blip2-base", False
-        # model, name, lora = get_blip2_model("blip2-sft"), "blip2-sft", False
-        model, name, lora = get_blip2_model("sadmankiba/blip2-sft"), "blip2-sft", True
-        
+
         output = model.generate(**inputs, max_new_tokens=20)
         
         decoded_output = processor.batch_decode(output, skip_special_tokens=True)[0].strip()
+        # print("Prompt:", prompt)
+        # print("Decoded Output:", decoded_output)
         yes_no_response = None
         if 'yes' in decoded_output.lower():
             yes_no_response = 'yes'
