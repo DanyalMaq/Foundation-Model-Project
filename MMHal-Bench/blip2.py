@@ -3,16 +3,23 @@ from PIL import Image
 
 import torch
 from transformers import AutoProcessor, Blip2ForConditionalGeneration 
+from peft import PeftModel, PeftConfig
 
 model_id = "Salesforce/blip2-opt-2.7b"
+sft_lora_model_id = "sadmankiba/blip2-sft"
 
 class Blip2:
-    def __init__(self):
-        self.model = Blip2ForConditionalGeneration.from_pretrained(
-            model_id, 
-            torch_dtype=torch.float16, 
-            low_cpu_mem_usage=True, 
-        ).to(0)
+    def __init__(self, sft_lora=False):
+        if sft_lora:
+            config = PeftConfig.from_pretrained(sft_lora_model_id)
+            model = Blip2ForConditionalGeneration.from_pretrained(config.base_model_name_or_path, torch_dtype=torch.float16)
+            self.model = PeftModel.from_pretrained(model, sft_lora_model_id).to(0)
+        else:
+            self.model = Blip2ForConditionalGeneration.from_pretrained(
+                model_id, 
+                torch_dtype=torch.float16, 
+                low_cpu_mem_usage=True, 
+            ).to(0)
 
         self.processor = AutoProcessor.from_pretrained(model_id)
         
@@ -28,11 +35,11 @@ class Blip2:
         return text_output
 
     
-def build_blip2():
-    return Blip2()
+def build_blip2(sft_lora):
+    return Blip2(sft_lora)
 
-def test_blip2():
-    model = build_blip2()
+def test_blip2(sft_lora):
+    model = build_blip2(sft_lora)
     
     # from web
     # image_file = "http://images.cocodataset.org/train2017/000000039768.jpg"
@@ -44,8 +51,13 @@ def test_blip2():
     print(response) 
 
 # Output
+# BLIP2-Base
 # Image: "images/2519330533_597840098a_o.jpg"
-# Oysters
+# Answer: Oysters
+# 
+# BLIP2-LoRA-SFT
+# Image: "images/2519330533_597840098a_o.jpg"
+# Answer: The oysters are inside the shell. The oysters are ...
 
 if __name__ == '__main__':
-    test_blip2()
+    test_blip2(sft_lora=True)
