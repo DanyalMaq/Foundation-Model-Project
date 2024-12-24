@@ -1,0 +1,23 @@
+Metrics for adversarial:
+Accuracy: 0.6083
+Precision: 0.5771
+Recall: 0.8113
+F1 Score: 0.6744
+
+Metrics for random:
+Accuracy: 0.6580
+Precision: 0.6209
+Recall: 0.8113
+F1 Score: 0.7035
+
+Metrics for popular:
+Accuracy: 0.5507
+Precision: 0.5333
+Recall: 0.8113
+F1 Score: 0.6436
+
+Metrics for all:
+Accuracy: 0.6057
+Precision: 0.5749
+Recall: 0.8113
+F1 Score: 0.6729

@@ -105,7 +105,7 @@ def run_eval():
 
       
 def print_metrics():
-    data_file="../data/pope_blip2-sft_responses_7000.csv"
+    data_file="../data/pope_blip2-sft_responses_9000.csv"
     df = pd.read_csv(data_file)
 
     categories = ['adversarial', 'random', 'popular']
@@ -120,6 +120,8 @@ def print_metrics():
         y_true = subset['answer']
         y_pred = subset['response']
         
+        if len(y_true) == 0:
+            continue
         accuracy = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred, pos_label='yes')
         recall = recall_score(y_true, y_pred, pos_label='yes')
@@ -141,5 +143,5 @@ def print_metrics():
         print()
 
 if __name__ == "__main__":
-    run_eval()
-    # print_metrics()
+    # run_eval()
+    print_metrics()
