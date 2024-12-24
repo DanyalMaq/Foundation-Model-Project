@@ -13,6 +13,7 @@ from peft import PeftModel, PeftConfig
 
 from datasets import load_dataset
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import re
 
 dataset = load_dataset("lmms-lab/POPE")
 print(dataset)
@@ -46,26 +47,51 @@ def run_eval():
     model, name = get_blip2_model("sadmankiba/blip2-sft", lora=True), "blip2-sft"
     
     for i, entry in enumerate(tqdm(dataset['test'])): 
-        prompt = f"Question: {entry['question']} Answer:"
+        entry['question'] = entry['question'].replace('in the imange', 'in the image') # Fix typo 
+        match = re.search(r'Is there (a|an) (.+?) in the image\?', entry['question'])
+        if match:
+            object_in_question = match.group(2)
+        
+        ques_format = 'mention_yes_no' # 'orig' for blip2-base, blip2-dpo, 'mention_yes_no' for blip2-sft
+        if ques_format == 'orig':
+            question = entry['question']
+        elif ques_format == 'use_find':
+            question = entry['question'].replace('Is there', 'Do you see')
+            question = question.replace('in the image', '')
+        elif ques_format == 'mention_yes_no':
+            # question = entry['question'] + " Say yes or no."
+            # question = entry['question'] + " Say no always."
+            # question = 'What objects do you see in image? ' # + entry['question']
+            # question = f'Any {object_in_question} here? Say yes if you see it, no otherwise.'
+            # question = f'I don\'t see any {object_in_question} here. Do you see any?'
+            # question = f'There is no {object_in_question} here. True or False?'
+            # question = f'Is any {object_in_question} present in the image?'
+            question = f'Which is true? There is no {object_in_question} in the image. Or, yes, there is a {object_in_question} in the image.'
+        else: 
+            print("Invalid question format")
+            break
+        prompt = f"Question: {question} Answer:"
         image = entry['image']
         inputs = processor(images=image, text=prompt, return_tensors="pt").to(device, torch.float16)
 
         output = model.generate(**inputs, max_new_tokens=20)
         
         decoded_output = processor.batch_decode(output, skip_special_tokens=True)[0].strip()
-        # print("Prompt:", prompt)
-        # print("Decoded Output:", decoded_output)
+        decoded_response = decoded_output.split('Answer:')[1].strip()
+
         yes_no_response = None
-        if 'yes' in decoded_output.lower():
+        if ('yes' in decoded_response.lower() 
+            or f'there is a {object_in_question}' in decoded_response.lower()
+            or f'there is an {object_in_question}' in decoded_response.lower()):
             yes_no_response = 'yes'
-        elif 'no' in decoded_output.lower():
+        elif 'no' in decoded_response.lower():
             yes_no_response = 'no'
         else:
             yes_no_response = 'unknown'
         
         responses.append({
             'id': entry['id'],
-            'question': entry['question'],
+            'question': question,
             'answer': entry['answer'],
             'image_source': entry['image_source'],
             'category': entry['category'],
@@ -76,10 +102,10 @@ def run_eval():
         if (i + 1) % 1000 == 0:
             print("Saving responses...")
             pd.DataFrame(responses).to_csv(f"../data/pope_{name}_responses_{i+1}.csv", index=False)
-    
+
       
 def print_metrics():
-    data_file="../data/pope_blip2_responsesall.csv"
+    data_file="../data/pope_blip2-sft_responses_7000.csv"
     df = pd.read_csv(data_file)
 
     categories = ['adversarial', 'random', 'popular']
